@@ -1,0 +1,8 @@
+^\.Rproj\.user$
+^.*\.Rproj$
+^\.DS_Store$
+^AGENTS\.md$
+^LICENSE\.md$
+^output$
+^outputs$
+^tmp$

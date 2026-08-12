@@ -1,0 +1,14 @@
+.DS_Store
+.Rhistory
+.RData
+.Rproj.user/
+data/raw/
+*.motus
+*.parquet
+output/
+outputs/
+tmp/
+notes/
+/AGENTS.md
+*.Rcheck/
+*.tar.gz

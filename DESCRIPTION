@@ -1,0 +1,30 @@
+Package: cassnoccurrences
+Title: CASSN Occurrence Dataset Pipeline
+Version: 0.1.0
+Authors@R: c(
+    person("John", "Imperato", role = c("aut", "cre"), email = "jti9@cornell.edu")
+  )
+Description: Reads conventionally staged Wildlife Insights, NABat or SonoBat,
+    Motus, and CASSN ingest metadata, applies consistent occurrence rules, and
+    writes one standardized comma-separated occurrence dataset.
+URL: https://github.com/john-imperato/cassn-occurrences
+BugReports: https://github.com/john-imperato/cassn-occurrences/issues
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 8.0.0
+Depends:
+    R (>= 4.1)
+Imports:
+    DBI,
+    digest,
+    dplyr,
+    lubridate,
+    readr,
+    RSQLite,
+    tibble
+Suggests:
+    motus,
+    readxl,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
