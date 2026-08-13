@@ -61,6 +61,13 @@ wi_sampling_protocol <- function(deployment_id) {
   )
 }
 
+wi_vehicle_record <- function(...) {
+  labels <- lapply(list(...), function(x) {
+    tolower(trimws(as.character(x))) %in% c("vehicle", "vehicles")
+  })
+  Reduce(`|`, labels)
+}
+
 transform_wi_occurrences <- function(dir = NULL, images = NULL, deployments = NULL,
                                      organization = "UC",
                                      timezone = "America/Los_Angeles") {
@@ -94,6 +101,10 @@ transform_wi_occurrences <- function(dir = NULL, images = NULL, deployments = NU
                         joined$genus, joined$species)
   joined$scientificName <- taxa$scientificName
   joined$taxonRank <- taxa$taxonRank
+  joined$isVehicle <- wi_vehicle_record(
+    joined$common_name, joined$class, joined$order, joined$family,
+    joined$genus, joined$species
+  )
   joined$occurrenceKey <- make_occurrence_key(
     "wildlife_insights",
     occurrence_id_from_filename(joined$filename),
@@ -106,6 +117,7 @@ transform_wi_occurrences <- function(dir = NULL, images = NULL, deployments = NU
   out <- joined |>
     dplyr::filter(
       suppressWarnings(as.integer(.data$is_blank)) != 1L,
+      !.data$isVehicle,
       presence_filter(.data$scientificName)
     ) |>
     dplyr::transmute(

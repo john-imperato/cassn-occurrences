@@ -14,6 +14,7 @@ cassn_occurrence_fields <- tibble::tribble(
   "decimalLatitude", "double", TRUE,
   "decimalLongitude", "double", TRUE,
   "geodeticDatum", "string", TRUE,
+  "elevation_m", "double", FALSE,
   "site", "string", FALSE,
   "site_short_name", "string", FALSE,
   "site_code", "string", FALSE,

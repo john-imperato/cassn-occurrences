@@ -154,7 +154,7 @@ stage_metadata_inputs <- function(staged_dir, deployment_dirs, reference_dir) {
 
   summary <- dplyr::bind_rows(copied)
   message(
-    "Staged CASSN metadata:\n",
+    "Staged CASSN metadata in metadata_inputs/:\n",
     "- Field-data deployment event folders: ", length(deployment_dirs), "\n",
     "- Ingest metadata CSVs: ",
     sum(summary$category == "deployment metadata"), "\n",

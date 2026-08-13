@@ -6,6 +6,18 @@ This R package stages the CASSN metadata and Motus receiver data used for an occ
 
 The current package supports Wildlife Insights camera exports, stationary-acoustic NABat exports, local Motus receiver databases, and CASSN metadata snapshots. It can copy selected ingest metadata and canonical reference files into staging and synchronize the configured Motus receivers; WI and NABat exports are still staged manually. It writes CSV only and keeps taxonomically resolved records. Future integration with Wildlife SoundHub is planned once the platform provides an export process.
 
+## Output metadata dictionary
+
+The package includes `CASSN_Metadata_Mapping.xlsx`, which documents the occurrence output schema and current source-field mappings. After installation, locate it with:
+
+``` r
+system.file(
+  "documentation",
+  "CASSN_Metadata_Mapping.xlsx",
+  package = "cassnoccurrences"
+)
+```
+
 ## Install
 
 Install the package from GitHub:
@@ -98,7 +110,7 @@ The only data product is the CSV. The function invisibly returns the same occurr
 
 ## How the output is organized
 
-The output has 81 columns. The first 34 form the shared occurrence record: identity, platform, taxon, time, coordinates, site, sampling method, sensor, and deployment information. The remaining fields preserve broadly useful source detail under unambiguous prefixes: 12 `wi_` fields, 15 `nabat_` fields, and 20 `m_` fields.
+The output has 82 columns. The first 35 form the shared occurrence record: identity, platform, taxon, time, coordinates, elevation, site, sampling method, sensor, and deployment information. The remaining fields preserve broadly useful source detail under unambiguous prefixes: 12 `wi_` fields, 15 `nabat_` fields, and 20 `m_` fields.
 
 The shared core contains information needed to interpret an occurrence across platforms. Platform-specific fields are retained when they help someone assess an identification, trace it to its source, understand the observing hardware, or interpret the sampling context. Fields are omitted when they duplicate the shared core, describe internal platform processing or submission history, are consistently empty, contain low-level telemetry with little publication value, or cannot yet be interpreted consistently enough to publish.
 
@@ -106,9 +118,17 @@ The exact column names, order, types, and required status are defined in `R/sche
 
 ## Occurrence and enrichment rules
 
-- Wildlife Insights: publish records with an identified wildlife taxon at any supported taxonomic rank. Exclude images marked blank, humans, `No CV Result`, `Unknown`, and non-wildlife or non-taxon records such as `Vehicle`.
-- NABat: use the manual identification when present; otherwise use the automated identification. Publish the record only when the selected code resolves through the pinned NABat reference to one species. Exclude groupings, frequency classes, noise and other non-identification codes, and unresolved codes.
-- Motus: publish one occurrence per detection run when `motusFilter == 1`, `ambigID` is blank, and `speciesSci` contains a resolved scientific name. Exclude runs that fail the Motus filter, have an ambiguous tag assignment, or lack a resolved taxon. Motus is site-level, so shared `deploymentID` and `plot` stay blank.
+- Wildlife Insights: remove blanks, humans, vehicles, and non-taxon labels; keep the most specific legitimate taxonomic rank supplied. ML and SA protocol names come from the CASSN deployment ID.
+- NABat: prefer a manual species ID, fall back to the automated ID, and publish only codes that resolve to one species in the pinned NABat reference table.
+- Motus: publish a receiver detection run only when `motusFilter == 1`, `speciesSci` is populated, and `ambigID` is empty. Motus is site-level, so shared `deploymentID` and `plot` stay blank.
 - NABat rejoins ingest metadata by normalized `filename`, then `original_filename`. Motus joins `m_station_id` through `metadata_inputs/motus.csv` to `sites.csv`. WI and the other CASSN deployments use the canonical deployment ID and `sites.csv`.
 
 The installed NABat reference was built from NABat's official Partner Portal workbook, `NABat_Species_Codes (updated 10-8-24).xlsx`. It includes the published single-species, grouping, frequency-class, and non-identification codes; only codes representing one species resolve to a publishable taxon.
+
+## Development checks
+
+``` sh
+R CMD build .
+R CMD check cassnoccurrences_0.1.0.tar.gz
+R CMD INSTALL cassnoccurrences_0.1.0.tar.gz
+```
