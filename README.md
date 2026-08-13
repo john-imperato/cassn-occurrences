@@ -46,10 +46,10 @@ staged_dir/
 ├── wildlife_insights/
 │   ├── ORG_SITE_plotN_ML_YYYYMMDD/
 │   │   ├── deployments.csv
-│   │   └── images*.csv
+│   │   └── images.csv
 │   └── ORG_SITE_plotN_SA_YYYYMMDD/
 │       ├── deployments.csv
-│       └── images*.csv
+│       └── images.csv
 ├── nabat/
 │   └── ORG_SITE_plotN_BT_YYYYMMDD/
 │       └── nabat_export.csv
@@ -125,10 +125,4 @@ The exact column names, order, types, and required status are defined in `R/sche
 
 The installed NABat reference was built from NABat's official Partner Portal workbook, `NABat_Species_Codes (updated 10-8-24).xlsx`. It includes the published single-species, grouping, frequency-class, and non-identification codes; only codes representing one species resolve to a publishable taxon.
 
-## Development checks
-
-``` sh
-R CMD build .
-R CMD check cassnoccurrences_0.1.0.tar.gz
-R CMD INSTALL cassnoccurrences_0.1.0.tar.gz
-```
+## 
