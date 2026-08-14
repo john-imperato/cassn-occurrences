@@ -56,11 +56,47 @@ enrich_nabat_from_audio_metadata <- function(df, metadata_root, strict = TRUE) {
     col_types = readr::cols(.default = readr::col_character())
   ))
   required <- c("filename", "original_filename", "deployment_id", "organization",
-                "site", "site_full_name", "site_code", "plot_number")
+                "site_code", "plot_number")
   missing <- setdiff(required, names(metadata))
   if (length(missing)) {
     stop("audio_file_metadata.csv is missing: ", paste(missing, collapse = ", "), call. = FALSE)
   }
+
+  canonical_site_fields <- c("site_name", "site_short_name")
+  legacy_site_fields <- c("site_full_name", "site")
+  has_canonical_sites <- all(canonical_site_fields %in% names(metadata))
+  has_legacy_sites <- all(legacy_site_fields %in% names(metadata))
+  if (!has_canonical_sites && !has_legacy_sites) {
+    stop(
+      "audio_file_metadata.csv needs canonical site_name and site_short_name ",
+      "or legacy site_full_name and site.",
+      call. = FALSE
+    )
+  }
+
+  merge_site_field <- function(canonical, legacy, label) {
+    canonical <- blank_to_na(canonical)
+    legacy <- blank_to_na(legacy)
+    conflict <- !is.na(canonical) & !is.na(legacy) & canonical != legacy
+    if (any(conflict)) {
+      stop(
+        "audio_file_metadata.csv has conflicting canonical and legacy ",
+        label, " values.",
+        call. = FALSE
+      )
+    }
+    dplyr::coalesce(canonical, legacy)
+  }
+  canonical_site_name <- if (has_canonical_sites) metadata$site_name else NA_character_
+  canonical_site_short_name <- if (has_canonical_sites) metadata$site_short_name else NA_character_
+  legacy_site_name <- if (has_legacy_sites) metadata$site_full_name else NA_character_
+  legacy_site_short_name <- if (has_legacy_sites) metadata$site else NA_character_
+  metadata_site_name <- merge_site_field(
+    canonical_site_name, legacy_site_name, "site name"
+  )
+  metadata_site_short_name <- merge_site_field(
+    canonical_site_short_name, legacy_site_short_name, "site short name"
+  )
 
   filename_key <- metadata_filename_key(metadata$filename)
   original_key <- metadata_filename_key(metadata$original_filename)
@@ -121,8 +157,8 @@ enrich_nabat_from_audio_metadata <- function(df, metadata_root, strict = TRUE) {
 
   df$deploymentID[rows] <- matched_deployment_id
   df$organization[rows] <- as.character(value("organization"))
-  df$site[rows] <- as.character(value("site_full_name"))
-  df$site_short_name[rows] <- as.character(value("site"))
+  df$site[rows] <- metadata_site_name[idx]
+  df$site_short_name[rows] <- metadata_site_short_name[idx]
   df$site_code[rows] <- as.character(value("site_code"))
   df$plot[rows] <- plot
   df$decimalLatitude[rows] <- suppressWarnings(as.numeric(value("latitude")))
