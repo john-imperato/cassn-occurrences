@@ -4,18 +4,29 @@
 \alias{stage_metadata_inputs}
 \title{Stage CASSN metadata for an occurrence build}
 \usage{
-stage_metadata_inputs(staged_dir, deployment_dirs, reference_dir)
+stage_metadata_inputs(
+  staged_dir,
+  deployment_dirs = NULL,
+  reference_dir,
+  field_data_root = NULL
+)
 }
 \arguments{
 \item{staged_dir}{Destination staged-folder root. It is created when needed.}
 
 \item{deployment_dirs}{Character vector of CASSN field-data deployment event
 folders. Each folder must contain \code{audio_file_metadata.csv},
-\code{image_file_metadata.csv}, or both.}
+\code{image_file_metadata.csv}, or both. Leave \code{NULL} to derive the folders from
+the already-staged platform exports; see \code{field_data_root}.}
 
 \item{reference_dir}{Directory containing the canonical \code{sites.csv} and
 \code{motus.csv} reference files. This is normally the Box-synchronized CASSN
 \code{app_config} folder, but any local directory with those files may be used.}
+
+\item{field_data_root}{Root of the CASSN field-data tree, normally the
+Box-synchronized \code{CASSN/field_data} folder. When supplied instead of
+\code{deployment_dirs}, the deployment events for this build are derived from
+the staged platform exports and resolved to folders under this root.}
 }
 \value{
 A file-level staging summary, invisibly, with source and destination
@@ -23,11 +34,31 @@ paths for each copied file.
 }
 \description{
 Copy the current CASSN site and Motus configuration plus the ingest-app
-metadata from explicitly selected deployment event folders into a staged occurrence
-folder. Source files are copied, not linked, so the staged folder records the
+metadata for this build's deployment events into a staged occurrence folder.
+Source files are copied, not linked, so the staged folder records the
 metadata snapshot used for that build.
 }
 \details{
+Supply exactly one of \code{deployment_dirs} or \code{field_data_root}.
+
+With \code{field_data_root}, staging reads the deployment IDs from the Wildlife
+Insights bundles in \verb{wildlife_insights/} and the NABat export folders in
+\verb{nabat/}, then resolves each one through the CASSN metadata under the root:
+every \code{audio_file_metadata.csv} and \code{image_file_metadata.csv} names the
+deployments recorded in its own event folder, so the mapping is read from the
+data rather than inferred from the identifier. Stage the platform exports
+first, since they define which deployments this build needs. Staging fails
+when no metadata names a staged deployment, or when two event folders name
+the same one.
+
+Deployment IDs are treated as opaque. A deployment's date token is its own
+end date rather than its event's, and the two differ whenever a device is
+retrieved on a different day, so the event is never parsed out of the ID.
+
+An event folder covers every deployment recorded for that event, including
+deployments absent from a given Wildlife Insights download, so the staged
+metadata is normally broader than the staged exports.
+
 Configuration files are copied to \verb{metadata_inputs/}. Deployment
 metadata is kept in one \verb{metadata_inputs/<deployment-event-folder-name>/}
 subfolder per deployment event. \code{\link[=write_occurrence_csv]{write_occurrence_csv()}} searches these
@@ -38,6 +69,14 @@ folder when reproducing or debugging that same build.
 }
 \examples{
 \dontrun{
+# Derive the deployment events from the staged Wildlife Insights bundle.
+stage_metadata_inputs(
+  "/path/to/staged_dir",
+  reference_dir = "/path/to/CASSN/app_config",
+  field_data_root = "/path/to/CASSN/field_data"
+)
+
+# Or name the deployment event folders explicitly.
 stage_metadata_inputs(
   "/path/to/staged_dir",
   c("/path/to/UC_SiteOne_20260101", "/path/to/UC_SiteTwo_20260102"),

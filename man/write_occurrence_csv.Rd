@@ -24,9 +24,11 @@ more specific ingest metadata is joined. The MVP default is \code{"UC"}.}
 NABat local timestamps and to express Motus UTC times locally.}
 }
 \value{
-The written occurrence data frame, invisibly. Its \code{output_csv} and
-\code{run_summary} attributes contain the normalized output path and the input,
-excluded, and published counts by platform.
+The written occurrence data frame, invisibly. Its \code{output_csv},
+\code{build_receipt}, \code{run_summary}, and \code{wi_deployments} attributes contain the
+normalized output path, the build receipt path, the input, excluded, and
+published counts by platform, and the per-deployment Wildlife Insights
+counts.
 }
 \description{
 Read one conventionally staged folder containing Wildlife Insights, NABat or
@@ -39,9 +41,10 @@ The required layout is:
 
 \if{html}{\out{<div class="sourceCode">}}\preformatted{staged_dir/
   wildlife_insights/
-    DEPLOYMENT_ID/
+    WI_DOWNLOAD_BUNDLE/       # the unzipped Wildlife Insights download
       deployments.csv
       images*.csv
+      projects.csv
   nabat/
     DEPLOYMENT_ID/
       nabat_export.csv
@@ -55,11 +58,33 @@ The required layout is:
       image_file_metadata.csv
 }\if{html}{\out{</div>}}
 
+One Wildlife Insights download bundle is the unit of staging: unzip the
+download and drop the folder in as it came. Every deployment the bundle
+contains is discovered from \code{deployments.csv} and published, so scope the
+Wildlife Insights request to what the build should cover. Several bundles may
+be staged together as long as no deployment appears in two of them. NABat
+exports keep one deployment-ID subfolder each, because NABat exports arrive
+per deployment rather than per request.
+
 Metadata CSVs are discovered recursively under \verb{metadata_inputs/};
 \code{image_file_metadata.csv} is optional and adds camera make and model when
-present. The function fails with a short error when a required input,
-metadata join, site crosswalk, folder identity, or unique occurrence
-identifier is missing.
+present. Staged metadata normally covers more deployments than the Wildlife
+Insights bundle does, which is expected; a Wildlife Insights deployment with
+no staged metadata is reported and published without sensor detail. The
+function fails with a short error when a required input, metadata join, site
+crosswalk, bundle integrity check, or unique occurrence identifier is missing.
+
+A build receipt is written beside the CSV as
+\verb{<product>_build_receipt.json}, recording the package version and git state,
+the R version and platform, the build timestamp and user, the build
+parameters, and the product's row count, column count, and SHA-256. These
+are the facts a later promotion step cannot recover; everything else in a
+release manifest is recomputable from the CSV and the staged inputs. Git
+GitHub-installed packages retain their resolved source commit; Git fields
+are \code{null} only when neither installation metadata nor a source checkout
+identifies one. \code{git_clean} is \code{false} when a source checkout carried
+uncommitted changes — a release should not be published from such a build,
+because the recorded commit is then not the complete code that ran.
 }
 \examples{
 \dontrun{

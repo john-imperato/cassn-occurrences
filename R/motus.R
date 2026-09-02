@@ -1,3 +1,24 @@
+# Motus API requests carry a total-time timeout (libcurl CURLOPT_TIMEOUT), so a
+# slow chunk fails even while it is actively downloading. The motus package
+# retries a single request once and then gives up, which aborts the whole
+# receiver. Retrying the receiver download is cheap because tagme() commits each
+# completed batch, so a repeat attempt resumes rather than restarting.
+retry_receiver_download <- function(action, attempts, label) {
+  for (attempt in seq_len(attempts)) {
+    result <- tryCatch(action(), error = function(e) e)
+    if (!inherits(result, "error")) {
+      return(result)
+    }
+    if (attempt == attempts) {
+      return(result)
+    }
+    message(
+      "  ", label, ": attempt ", attempt, " of ", attempts, " failed (",
+      conditionMessage(result), ")\n  Retrying; batches already downloaded are kept."
+    )
+  }
+}
+
 #' Synchronize all staged CASSN Motus receiver databases
 #'
 #' Read receiver serials from the staged CASSN Motus configuration and create
@@ -10,6 +31,11 @@
 #'   `site_short_name` columns.
 #' @param update If `TRUE`, download and merge data available from Motus. If
 #'   `FALSE`, only inspect databases that already exist in the staged folder.
+#' @param timeout Seconds allowed for one Motus API request, applied for the
+#'   duration of the call. The `motus` default of 120 is often too short for the
+#'   detection-hit requests. Pass `NULL` to leave the current setting alone.
+#' @param attempts Number of times to try each receiver before recording it as
+#'   failed and moving on to the next one.
 #'
 #' @return A synchronization summary, invisibly, with one row per receiver.
 #'
@@ -20,13 +46,21 @@
 #'   deprecated-batch data, which the pipeline does not use. Existing databases
 #'   are updated in place; missing databases are created when `update = TRUE`.
 #'
+#'   A Motus request times out on total elapsed time, so a slow response fails
+#'   even while data is still arriving. `timeout` raises that ceiling for one
+#'   request, not for the whole download, which is made of many requests. When a
+#'   receiver still fails after `attempts` tries, the remaining receivers are
+#'   synchronized before the function stops, and rerunning resumes each partial
+#'   database from the batches it already holds.
+#'
 #' @export
 #'
 #' @examples
 #' \dontrun{
 #' summary <- sync_motus_receivers("/path/to/staged_dir")
 #' }
-sync_motus_receivers <- function(staged_dir, update = TRUE) {
+sync_motus_receivers <- function(staged_dir, update = TRUE, timeout = 600,
+                                 attempts = 3L) {
   if (!requireNamespace("motus", quietly = TRUE)) {
     stop(
       "The 'motus' package is required for sync_motus_receivers(). ",
@@ -67,15 +101,22 @@ sync_motus_receivers <- function(staged_dir, update = TRUE) {
     stop("motus.csv contains duplicate receiver_serial values.", call. = FALSE)
   }
 
+  if (!is.null(timeout)) {
+    previous_timeout <- getOption("motus.timeout")
+    motus::srvTimeout(timeout)
+    on.exit(options(motus.timeout = previous_timeout), add = TRUE)
+  }
+
   motus_dir <- file.path(staged_dir, "motus")
   dir.create(motus_dir, recursive = TRUE, showWarnings = FALSE)
   result <- vector("list", nrow(config))
+  failures <- list()
 
   for (i in seq_len(nrow(config))) {
     serial <- config$receiver_serial[[i]]
     snapshot <- file.path(motus_dir, paste0(serial, ".motus"))
-    is_new <- !file.exists(snapshot)
-    if (is_new && !isTRUE(update)) {
+    was_new <- !file.exists(snapshot)
+    if (was_new && !isTRUE(update)) {
       stop(
         "No staged database for receiver ", serial,
         "; rerun with update = TRUE to download it.",
@@ -83,17 +124,38 @@ sync_motus_receivers <- function(staged_dir, update = TRUE) {
       )
     }
 
-    message(if (is_new) "Downloading Motus receiver: " else "Updating Motus receiver: ", serial)
-    sql <- motus::tagme(
-      projRecv = serial,
-      update = update,
-      new = is_new,
-      dir = motus_dir,
-      forceMeta = TRUE,
-      skipActivity = TRUE,
-      skipNodes = TRUE,
-      skipDeprecated = TRUE
+    message(if (was_new) "Downloading Motus receiver: " else "Updating Motus receiver: ", serial)
+    sql <- retry_receiver_download(
+      # `new` is recomputed each attempt: a failed first attempt may already
+      # have created the database, and tagme() must not be told to create it
+      # again.
+      function() {
+        motus::tagme(
+          projRecv = serial,
+          update = update,
+          new = !file.exists(snapshot),
+          dir = motus_dir,
+          forceMeta = TRUE,
+          skipActivity = TRUE,
+          skipNodes = TRUE,
+          skipDeprecated = TRUE
+        )
+      },
+      attempts = attempts,
+      label = serial
     )
+
+    # One receiver failing must not deny the remaining receivers their turn;
+    # the run still fails at the end so a partial sync is never mistaken for a
+    # complete one.
+    if (inherits(sql, "error")) {
+      message("  ", serial, ": giving up after ", attempts, " attempt(s).")
+      failures[[length(failures) + 1L]] <- paste0(
+        serial, " (", conditionMessage(sql), ")"
+      )
+      next
+    }
+
     run_count <- tryCatch(
       DBI::dbGetQuery(sql, "select count(*) as n from allruns")$n[[1]],
       finally = if (DBI::dbIsValid(sql)) DBI::dbDisconnect(sql)
@@ -106,7 +168,7 @@ sync_motus_receivers <- function(staged_dir, update = TRUE) {
       m_station_id = config$m_station_id[[i]],
       receiver_serial = serial,
       site_short_name = config$site_short_name[[i]],
-      status = if (is_new) "downloaded" else if (isTRUE(update)) "updated" else "inspected",
+      status = if (was_new) "downloaded" else if (isTRUE(update)) "updated" else "inspected",
       runs = as.integer(run_count),
       snapshot = normalizePath(snapshot, mustWork = TRUE),
       stringsAsFactors = FALSE
@@ -114,7 +176,19 @@ sync_motus_receivers <- function(staged_dir, update = TRUE) {
   }
 
   summary <- dplyr::bind_rows(result)
-  message(paste(utils::capture.output(print(summary, row.names = FALSE)), collapse = "\n"))
+  if (nrow(summary)) {
+    message(paste(utils::capture.output(print(summary, row.names = FALSE)), collapse = "\n"))
+  }
+  if (length(failures)) {
+    stop(
+      "Motus synchronization failed for ", length(failures), " receiver(s):\n- ",
+      paste(unlist(failures), collapse = "\n- "),
+      "\nRerun sync_motus_receivers() to resume from the batches already downloaded",
+      if (!is.null(timeout)) paste0(", or raise timeout above ", timeout, "s") else "",
+      ".",
+      call. = FALSE
+    )
+  }
   invisible(summary)
 }
 

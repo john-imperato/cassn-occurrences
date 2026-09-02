@@ -4,7 +4,7 @@
 \alias{sync_motus_receivers}
 \title{Synchronize all staged CASSN Motus receiver databases}
 \usage{
-sync_motus_receivers(staged_dir, update = TRUE)
+sync_motus_receivers(staged_dir, update = TRUE, timeout = 600, attempts = 3L)
 }
 \arguments{
 \item{staged_dir}{Path to a staged CASSN folder. It must contain
@@ -13,6 +13,13 @@ sync_motus_receivers(staged_dir, update = TRUE)
 
 \item{update}{If \code{TRUE}, download and merge data available from Motus. If
 \code{FALSE}, only inspect databases that already exist in the staged folder.}
+
+\item{timeout}{Seconds allowed for one Motus API request, applied for the
+duration of the call. The \code{motus} default of 120 is often too short for the
+detection-hit requests. Pass \code{NULL} to leave the current setting alone.}
+
+\item{attempts}{Number of times to try each receiver before recording it as
+failed and moving on to the next one.}
 }
 \value{
 A synchronization summary, invisibly, with one row per receiver.
@@ -30,6 +37,13 @@ the detections and refreshes the tag, species, and receiver metadata used
 by the occurrence pipeline. It skips Motus activity, node, and
 deprecated-batch data, which the pipeline does not use. Existing databases
 are updated in place; missing databases are created when \code{update = TRUE}.
+
+A Motus request times out on total elapsed time, so a slow response fails
+even while data is still arriving. \code{timeout} raises that ceiling for one
+request, not for the whole download, which is made of many requests. When a
+receiver still fails after \code{attempts} tries, the remaining receivers are
+synchronized before the function stops, and rerunning resumes each partial
+database from the batches it already holds.
 }
 \examples{
 \dontrun{
