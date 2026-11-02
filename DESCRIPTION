@@ -1,8 +1,9 @@
 Package: cassnoccurrences
 Title: CASSN Occurrence Dataset Pipeline
-Version: 0.1.0
+Version: 1.0.0
 Authors@R: c(
-    person("John", "Imperato", role = c("aut", "cre"), email = "jti9@cornell.edu")
+    person("John", "Imperato", role = c("aut", "cre"), email = "jti9@cornell.edu",
+           comment = c(ORCID = "0009-0004-7043-8937"))
   )
 Description: Reads conventionally staged Wildlife Insights, NABat or SonoBat,
     Motus, and CASSN ingest metadata, applies consistent occurrence rules, and

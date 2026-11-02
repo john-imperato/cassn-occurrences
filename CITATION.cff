@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata from this file."
+type: software
+title: "cassnoccurrences: CASSN Occurrence Dataset Pipeline"
+version: 1.0.0
+date-released: 2026-11-02
+license: MIT
+repository-code: "https://github.com/john-imperato/cassn-occurrences"
+abstract: >-
+  R package that reads conventionally staged Wildlife Insights, NABat or SonoBat,
+  Motus, and California Sentinel Sites for Nature (CASSN) ingest metadata, applies
+  consistent occurrence rules, and writes one standardized comma-separated
+  occurrence dataset with a build receipt.
+authors:
+  - family-names: Imperato
+    given-names: John
+    orcid: "https://orcid.org/0009-0004-7043-8937"
+    affiliation: "University of California Natural Reserve System, UC Davis"
+keywords:
+  - biodiversity
+  - occurrence records
+  - camera traps
+  - passive acoustic monitoring
+  - Motus
+  - Wildlife Insights
+  - NABat
+  - data harmonization

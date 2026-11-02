@@ -1,0 +1,15 @@
+{
+  "title": "cassnoccurrences: CASSN Occurrence Dataset Pipeline",
+  "description": "R package that reads conventionally staged Wildlife Insights, NABat or SonoBat, Motus, and California Sentinel Sites for Nature (CASSN) ingest metadata, applies consistent occurrence rules, and writes one standardized comma-separated occurrence dataset with a build receipt.",
+  "upload_type": "software",
+  "license": "MIT",
+  "creators": [
+    {
+      "name": "Imperato, John",
+      "affiliation": "University of California Natural Reserve System, UC Davis",
+      "orcid": "0009-0004-7043-8937"
+    }
+  ],
+  "keywords": ["biodiversity", "occurrence records", "camera traps", "passive acoustic monitoring", "Motus", "Wildlife Insights", "NABat", "data harmonization"],
+  "access_right": "open"
+}
