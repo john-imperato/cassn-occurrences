@@ -1,5 +1,7 @@
 # CASSN occurrences
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23897764.svg)](https://doi.org/10.5281/zenodo.23897764)
+
 This R package stages the CASSN metadata and Motus receiver data used for an occurrence build, then turns Wildlife Insights, NABat/SonoBat, and Motus inputs into one standardized occurrence CSV. The result is one row per occurrence, with a shared core and useful platform detail kept alongside it.
 
 ## Scope
