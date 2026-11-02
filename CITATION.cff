@@ -4,6 +4,7 @@ type: software
 title: "cassnoccurrences: CASSN Occurrence Dataset Pipeline"
 version: 1.0.0
 date-released: 2026-11-02
+doi: 10.5281/zenodo.23897764
 license: MIT
 repository-code: "https://github.com/john-imperato/cassn-occurrences"
 abstract: >-
